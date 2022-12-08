@@ -1,8 +1,8 @@
 const PI = 355 / 113;
 
 const COLOR = {
-    BG: 'rgba(10, 10, 30, 0.3)',
-    HALO: 'rgba(255, 255, 255, 0.1)',
+    BG: 'rgba(0, 0, 20, 0.3)',
+    HALO: 'rgba(255, 255, 255, 0.2)',
 }
 
 const SHELL = {
@@ -10,8 +10,8 @@ const SHELL = {
     HALO_R: 10, // halo size
     V: 2, // initial velocity
     A: 2, // acceleration
-    HUE_L: 30, // minimum hue
-    HUE_R: 150, // maximum hue
+    HUE_L: 240, // minimum hue
+    HUE_R: 360, // maximum hue
 
     N: 70, // split into how many stars (mean)
     N_STD: 5, // split into how many stars (std)
@@ -30,7 +30,7 @@ const STAR = {
     CURV_A: 0.1, // curving accel
     
     BLINK_THR: 0.8, // blink probability, 1 is forever visible
-    TTL: 100, // time to live
+    TTL: 150, // time to live
 }
 
 function clip(x, minn, maxx) {
@@ -64,6 +64,8 @@ class Star {
             let a = p5.Vector.sub( // gravity + curving + resistence
                 p5.Vector.add(this.grav_a, this.curv_a),
                 p5.Vector.mult(this.v, STAR.RESIS * this.v.mag()))
+            a.limit(this.v.mag());
+            // console.log(this.v, STAR.RESIS * this.v.mag())
             this.v.add(a);
             this.pos_ = createVector(this.pos.x, this.pos.y);
             this.pos.add(this.v);
@@ -92,9 +94,9 @@ class Star {
 }
 
 class Shell {
-    constructor(targx, targy) {
+    constructor(targx, targy, origx=width / 2, origy=height - 5) {
         this.targ = createVector(targx, targy);
-        this.pos = createVector(width / 2, height - 5);
+        this.pos = createVector(origx, origy);
         this.pos_ = createVector(this.pos.x, this.pos.y);
         this.start = createVector(this.pos.x, this.pos.y);
         this.huebase = random(SHELL.HUE_L, SHELL.HUE_R);
@@ -153,10 +155,22 @@ function mouseDragged() {
     shells.push(new Shell(mouseX, mouseY));
 }
 
+function heartShoot() {
+    for (let t = 0; t <= 60; t += 3) {
+        let x = 0.3 * (-sq(t) + 40 * t + 1200) * sin(PI * t / 180)
+        let y = 0.3 * (-sq(t) + 40 * t + 1200) * -cos(PI * t / 180)
+        shells.push(new Shell(x + width / 2, y + height - 200,
+                              width / 2, height / 2));
+        shells.push(new Shell(-x + width / 2, y + height - 200,
+                              width / 2, height / 2));
+    }
+}
+
 function setup() {
     colorMode(HSB, 360, 100, 100);
     createCanvas((displayWidth - 100) / 2, displayHeight - 200);
     shells = [];
+    setTimeout(heartShoot, 3000);
 }
 
 function draw() {
