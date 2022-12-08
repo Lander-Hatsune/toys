@@ -1,0 +1,7 @@
+
+* fireworks
+
+** reflist
+
+- [[https://codepen.io/jackrugile/pen/nExVvo]]
+- [[https://p5js.org/]]
