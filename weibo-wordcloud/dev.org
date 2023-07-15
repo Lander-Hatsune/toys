@@ -1,0 +1,27 @@
+* 爬数据
+
+- url
+- params
+- cookie
+- user-agent
+- sleep
+
+
+- regex pattern, =re.S= for =.= to match all white spaces
+
+* 整理数据
+
+- replace whitespaces
+- filter
+
+
+- jieba
+  - 特殊词典
+  - 词性
+
+
+- filter out stopwords
+
+
+- counter: =collections.Counter=
+
