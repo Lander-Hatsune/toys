@@ -2,9 +2,12 @@ package main
 
 import (
 	"cmp"
+	"fmt"
+	"image"
 	"image/color"
 	"math"
 	"math/rand"
+	"os"
 	"sync"
 	"time"
 
@@ -13,16 +16,17 @@ import (
 )
 
 const (
-	WIDTH    = 800
-	HEIGHT   = 800
+	WIDTH    = 520
+	HEIGHT   = 520
 	R        = 10
 	G        = 0.05
 	BOUNCE_F = 0.2
 	GRID_W   = WIDTH / (2 * R)
 	GRID_H   = HEIGHT / (2 * R)
-	NSUBDT   = 16
+	NSUBDT   = 12
 	INIT_POS = R + 10
 	INIT_V   = 5
+	MAX_N    = 814
 )
 
 type Particle struct {
@@ -42,36 +46,8 @@ func (p Particle) draw() {
 }
 
 func setup() {
+	rand.Seed(814)
 	p5.Canvas(WIDTH, HEIGHT)
-	go func() {
-		for i := 0; i < 600; i++ {
-			ps = append(ps,
-				&Particle{
-					pos: r2.Vec{X: INIT_POS, Y: INIT_POS},
-					v:   r2.Vec{X: INIT_V, Y: 0},
-					color: color.RGBA{
-						R: uint8(rand.Int()),
-						G: uint8(rand.Int()),
-						B: uint8(rand.Int()),
-						A: 255,
-					},
-				},
-			)
-			ps = append(ps,
-				&Particle{
-					pos: r2.Vec{X: INIT_POS, Y: INIT_POS + R*2 + 2},
-					v:   r2.Vec{X: INIT_V, Y: 0},
-					color: color.RGBA{
-						R: uint8(rand.Int()),
-						G: uint8(rand.Int()),
-						B: uint8(rand.Int()),
-						A: 255,
-					},
-				},
-			)
-			time.Sleep(time.Millisecond * 100)
-		}
-	}()
 	go perfStat()
 }
 
@@ -95,11 +71,20 @@ func compose(v, xAxis r2.Vec) r2.Vec {
 }
 
 func perfStat() {
+	const INTERV = 500
 	for {
 		lastFrameCnt := p5.FrameCount()
-		time.Sleep(time.Second)
-		println("particles:", len(ps), "FPS:", p5.FrameCount()-lastFrameCnt)
-
+		time.Sleep(time.Millisecond * 500)
+		fps := (p5.FrameCount() - lastFrameCnt) * 1000 / INTERV
+		fmt.Println("particles:", len(ps), "FPS:", fps)
+		/*
+			 		if fps <= 30 {
+						trace.Start(os.Stderr)
+						time.Sleep(time.Millisecond * 100)
+						trace.Stop()
+						os.Exit(0)
+					}
+		*/
 	}
 }
 
@@ -132,6 +117,21 @@ func solCollision(x, y, x_, y_ int) {
 	}
 }
 
+func solColCollision(y int) {
+	for x := range grid {
+		for dx := -1; dx <= 1; dx++ {
+			for dy := -1; dy <= 1; dy++ {
+				x_, y_ := x+dx, y+dy
+				if x_ >= GRID_W || x_ < 0 ||
+					y_ >= GRID_H || y_ < 0 {
+					continue
+				}
+				solCollision(x, y, x_, y_)
+			}
+		}
+	}
+}
+
 func update(dt float64) {
 	for _, p := range ps {
 		p.v = r2.Add(p.v, r2.Scale(dt, r2.Vec{X: 0, Y: G}))
@@ -158,71 +158,76 @@ func update(dt float64) {
 
 	var wg sync.WaitGroup
 
-	for x := 0; x < len(grid); x += 3 {
+	for y := 0; y < len(grid[0]); y += 3 {
 		wg.Add(1)
-		go func(x int) {
+		go func(y int) {
 			defer wg.Done()
-			for y := range grid[x] {
-				for dx := -1; dx <= 1; dx++ {
-					for dy := -1; dy <= 1; dy++ {
-						x_, y_ := x+dx, y+dy
-						if x_ >= GRID_W || x_ < 0 ||
-							y_ >= GRID_H || y_ < 0 {
-							continue
-						}
-						solCollision(x, y, x_, y_)
-					}
-				}
-			}
-		}(x)
+			solColCollision(y)
+		}(y)
 	}
-
 	wg.Wait()
 
-	for x := 1; x < len(grid); x += 3 {
+	for y := 1; y < len(grid[0]); y += 3 {
 		wg.Add(1)
-		go func(x int) {
+		go func(y int) {
 			defer wg.Done()
-			for y := range grid[x] {
-				for dx := -1; dx <= 1; dx++ {
-					for dy := -1; dy <= 1; dy++ {
-						x_, y_ := x+dx, y+dy
-						if x_ >= GRID_W || x_ < 0 ||
-							y_ >= GRID_H || y_ < 0 {
-							continue
-						}
-						solCollision(x, y, x_, y_)
-					}
-				}
-			}
-		}(x)
+			solColCollision(y)
+		}(y)
 	}
-
 	wg.Wait()
 
-	for x := 2; x < len(grid); x += 3 {
+	for y := 2; y < len(grid[0]); y += 3 {
 		wg.Add(1)
-		go func(x int) {
+		go func(y int) {
 			defer wg.Done()
-			for y := range grid[x] {
-				for dx := -1; dx <= 1; dx++ {
-					for dy := -1; dy <= 1; dy++ {
-						x_, y_ := x+dx, y+dy
-						if x_ >= GRID_W || x_ < 0 ||
-							y_ >= GRID_H || y_ < 0 {
-							continue
-						}
-						solCollision(x, y, x_, y_)
-					}
-				}
-			}
-		}(x)
+			solColCollision(y)
+		}(y)
 	}
-
 	wg.Wait()
 }
 
+func doColoring() {
+	time.Sleep(time.Second * 5)
+	f, err := os.Open("52.png")
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	img, _, err := image.Decode(f)
+	if err != nil {
+		panic(err)
+	}
+	for _, p := range ps {
+		p.color = img.At(int(p.pos.X/10), int(p.pos.Y/10))
+	}
+}
+
+var colored = false
+
 func draw() {
+	if len(ps) < MAX_N {
+		if p5.FrameCount()%6 == 0 {
+			for pos := 0; pos < 80; pos += 20 {
+				ps = append(ps,
+					&Particle{
+						pos: r2.Vec{X: INIT_POS, Y: INIT_POS + float64(pos)},
+						v:   r2.Vec{X: INIT_V, Y: 0},
+						color: color.RGBA{
+							R: uint8(rand.Int()),
+							G: uint8(rand.Int()),
+							B: uint8(rand.Int()),
+							A: 255,
+						},
+					},
+				)
+			}
+		}
+	} else {
+		if !colored {
+			colored = true
+			go doColoring()
+		}
+	}
 	p5.Background(color.Gray{Y: 200})
 
 	for d := 0; d < NSUBDT; d++ {
