@@ -6,7 +6,6 @@ import (
 	"image"
 	"image/color"
 	"math"
-	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -45,9 +44,26 @@ func (p Particle) draw() {
 	p5.Circle(p.pos.X, p.pos.Y, float64(R)*2)
 }
 
+var colorList []color.Color
+
 func setup() {
-	rand.Seed(814)
 	p5.Canvas(WIDTH, HEIGHT)
+	f, err := os.Open("52.txt")
+	if err != nil {
+		for i := 0; i < 816; i++ {
+			colorList = append(colorList, color.Black)
+		}
+	} else {
+		defer f.Close()
+		for {
+			var r, g, b, a uint8
+			_, err := fmt.Fscanf(f, "%v %v %v %v", &r, &g, &b, &a)
+			if err != nil {
+				break
+			}
+			colorList = append(colorList, color.RGBA{r, g, b, a})
+		}
+	}
 	go perfStat()
 }
 
@@ -197,9 +213,20 @@ func doColoring() {
 	if err != nil {
 		panic(err)
 	}
+	of, _ := os.Create("52.txt")
+	defer of.Close()
 	for _, p := range ps {
 		p.color = img.At(int(p.pos.X/10), int(p.pos.Y/10))
+		r, g, b, a := p.color.RGBA()
+		fmt.Fprintf(of, "%v %v %v %v\n", uint8(r), uint8(g), uint8(b), uint8(a))
 	}
+}
+
+var colorp = -1
+
+func nextColor() color.Color {
+	colorp += 1
+	return colorList[colorp]
 }
 
 var colored = false
@@ -210,14 +237,9 @@ func draw() {
 			for pos := 0; pos < 80; pos += 20 {
 				ps = append(ps,
 					&Particle{
-						pos: r2.Vec{X: INIT_POS, Y: INIT_POS + float64(pos)},
-						v:   r2.Vec{X: INIT_V, Y: 0},
-						color: color.RGBA{
-							R: uint8(rand.Int()),
-							G: uint8(rand.Int()),
-							B: uint8(rand.Int()),
-							A: 255,
-						},
+						pos:   r2.Vec{X: INIT_POS, Y: INIT_POS + float64(pos)},
+						v:     r2.Vec{X: INIT_V, Y: 0},
+						color: nextColor(),
 					},
 				)
 			}
