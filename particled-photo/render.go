@@ -20,8 +20,9 @@ const (
 	R          = 10
 	G          = 0.05
 	BOUNCE_F   = 0.2
-	GRID_W     = WIDTH / (2 * R)
-	GRID_H     = HEIGHT / (2 * R)
+	GRID_SCALE = 2 * R
+	GRID_W     = WIDTH / GRID_SCALE
+	GRID_H     = HEIGHT / GRID_SCALE
 	NSUBDT     = 12
 	INIT_POS_X = WIDTH / 2
 	INIT_POS_Y = R + 10
@@ -176,7 +177,7 @@ func update(dt float64) {
 			p.pos.Y = clamp(p.pos.Y, R, float64(WIDTH)-R)
 			p.v = r2.Vec{X: p.v.X, Y: -p.v.Y * BOUNCE_F}
 		}
-		gx, gy := int(p.pos.X)/(2*R), int(p.pos.Y)/(2*R)
+		gx, gy := int(p.pos.X)/GRID_SCALE, int(p.pos.Y)/GRID_SCALE
 		grid[gx][gy] = append(grid[gx][gy], p)
 	}
 
@@ -244,7 +245,7 @@ func draw() {
 		if p5.FrameCount()%2 == 0 {
 			ps = append(ps,
 				&Particle{
-					pos:   r2.Vec{X: INIT_POS_X + float64(20*(p5.FrameCount()%3)), Y: INIT_POS_Y},
+					pos:   r2.Vec{X: INIT_POS_X + float64(20*(p5.FrameCount()%5)), Y: INIT_POS_Y},
 					v:     r2.Vec{X: 0, Y: INIT_V},
 					color: nextColor(),
 				},
