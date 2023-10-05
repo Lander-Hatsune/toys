@@ -15,17 +15,18 @@ import (
 )
 
 const (
-	WIDTH    = 520
-	HEIGHT   = 520
-	R        = 10
-	G        = 0.05
-	BOUNCE_F = 0.2
-	GRID_W   = WIDTH / (2 * R)
-	GRID_H   = HEIGHT / (2 * R)
-	NSUBDT   = 12
-	INIT_POS = R + 10
-	INIT_V   = 5
-	MAX_N    = 814
+	WIDTH      = 520
+	HEIGHT     = 520
+	R          = 10
+	G          = 0.05
+	BOUNCE_F   = 0.2
+	GRID_W     = WIDTH / (2 * R)
+	GRID_H     = HEIGHT / (2 * R)
+	NSUBDT     = 12
+	INIT_POS_X = WIDTH / 2
+	INIT_POS_Y = R + 10
+	INIT_V     = 5
+	MAX_N      = 814
 )
 
 type Particle struct {
@@ -48,12 +49,12 @@ var colorList []color.Color
 
 func setup() {
 	p5.Canvas(WIDTH, HEIGHT)
-	f, err := os.Open("52.txt")
-	if err != nil {
-		for i := 0; i < 816; i++ {
-			colorList = append(colorList, color.Black)
+	if os.Args[1] == "eval" {
+		colorSchemePath := os.Args[2]
+		f, err := os.Open(colorSchemePath)
+		if err != nil {
+			panic("*** Color scheme invalid! ***")
 		}
-	} else {
 		defer f.Close()
 		for {
 			var r, g, b, a uint8
@@ -63,8 +64,15 @@ func setup() {
 			}
 			colorList = append(colorList, color.RGBA{r, g, b, a})
 		}
+		if len(colorList) != MAX_N {
+			panic("*** ncolors doesnt match nparticles! ***")
+		}
+	} else {
+		for i := 0; i < MAX_N; i++ {
+			colorList = append(colorList, color.Black)
+		}
 	}
-	go perfStat()
+	go monitor()
 }
 
 func clamp[T cmp.Ordered](x, minn, maxx T) T {
@@ -86,7 +94,7 @@ func compose(v, xAxis r2.Vec) r2.Vec {
 	return r2.Add(r2.Scale(v.X, ux), r2.Scale(v.Y, uy))
 }
 
-func perfStat() {
+func monitor() {
 	const INTERV = 500
 	for {
 		lastFrameCnt := p5.FrameCount()
@@ -94,12 +102,12 @@ func perfStat() {
 		fps := (p5.FrameCount() - lastFrameCnt) * 1000 / INTERV
 		fmt.Println("particles:", len(ps), "FPS:", fps)
 		/*
-			 		if fps <= 30 {
-						trace.Start(os.Stderr)
-						time.Sleep(time.Millisecond * 100)
-						trace.Stop()
-						os.Exit(0)
-					}
+			if fps <= 30 {
+				trace.Start(os.Stderr)
+				time.Sleep(time.Millisecond * 100)
+				trace.Stop()
+				os.Exit(0)
+			}
 		*/
 	}
 }
@@ -204,7 +212,7 @@ func update(dt float64) {
 
 func doColoring() {
 	time.Sleep(time.Second * 5)
-	f, err := os.Open("52.png")
+	f, err := os.Open(os.Args[2])
 	if err != nil {
 		panic(err)
 	}
@@ -213,7 +221,7 @@ func doColoring() {
 	if err != nil {
 		panic(err)
 	}
-	of, _ := os.Create("52.txt")
+	of, _ := os.Create(os.Args[2] + ".txt")
 	defer of.Close()
 	for _, p := range ps {
 		p.color = img.At(int(p.pos.X/10), int(p.pos.Y/10))
@@ -233,19 +241,17 @@ var colored = false
 
 func draw() {
 	if len(ps) < MAX_N {
-		if p5.FrameCount()%6 == 0 {
-			for pos := 0; pos < 80; pos += 20 {
-				ps = append(ps,
-					&Particle{
-						pos:   r2.Vec{X: INIT_POS, Y: INIT_POS + float64(pos)},
-						v:     r2.Vec{X: INIT_V, Y: 0},
-						color: nextColor(),
-					},
-				)
-			}
+		if p5.FrameCount()%2 == 0 {
+			ps = append(ps,
+				&Particle{
+					pos:   r2.Vec{X: INIT_POS_X + float64(20*(p5.FrameCount()%3)), Y: INIT_POS_Y},
+					v:     r2.Vec{X: 0, Y: INIT_V},
+					color: nextColor(),
+				},
+			)
 		}
 	} else {
-		if !colored {
+		if !colored && os.Args[1] == "sim" {
 			colored = true
 			go doColoring()
 		}
@@ -262,5 +268,8 @@ func draw() {
 }
 
 func main() {
+	if len(os.Args) > 3 || (os.Args[1] != "sim" && os.Args[1] != "eval") {
+		panic("Usage: <BIN> [sim|eval] [<pic>|<scheme.txt>]")
+	}
 	p5.Run(setup, draw)
 }
