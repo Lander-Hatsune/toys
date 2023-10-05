@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	WIDTH      = 520
-	HEIGHT     = 520
+	WIDTH      = 720
+	HEIGHT     = 720
 	R          = 10
 	G          = 0.05
 	BOUNCE_F   = 0.2
@@ -24,10 +24,7 @@ const (
 	GRID_W     = WIDTH / GRID_SCALE
 	GRID_H     = HEIGHT / GRID_SCALE
 	NSUBDT     = 12
-	INIT_POS_X = WIDTH / 2
-	INIT_POS_Y = R + 10
-	INIT_V     = 5
-	MAX_N      = 814
+	MAX_N      = 814 * 2
 )
 
 type Particle struct {
@@ -41,18 +38,20 @@ var ps []*Particle
 var grid [GRID_W][GRID_H][]*Particle
 
 func (p Particle) draw() {
-	p5.StrokeWidth(0)
 	p5.Fill(p.color)
 	p5.Circle(p.pos.X, p.pos.Y, float64(R)*2)
 }
 
 var colorList []color.Color
 
+var stage, path string
+
 func setup() {
+	p5.StrokeWidth(0)
+
 	p5.Canvas(WIDTH, HEIGHT)
-	if os.Args[1] == "eval" {
-		colorSchemePath := os.Args[2]
-		f, err := os.Open(colorSchemePath)
+	if stage == "eval" {
+		f, err := os.Open(path)
 		if err != nil {
 			panic("*** Color scheme invalid! ***")
 		}
@@ -102,14 +101,12 @@ func monitor() {
 		time.Sleep(time.Millisecond * 500)
 		fps := (p5.FrameCount() - lastFrameCnt) * 1000 / INTERV
 		fmt.Println("particles:", len(ps), "FPS:", fps)
-		/*
-			if fps <= 30 {
-				trace.Start(os.Stderr)
-				time.Sleep(time.Millisecond * 100)
-				trace.Stop()
-				os.Exit(0)
-			}
-		*/
+		/* if fps <= 30 {
+			trace.Start(os.Stderr)
+			time.Sleep(time.Millisecond * 100)
+			trace.Stop()
+			os.Exit(0)
+		} */
 	}
 }
 
@@ -213,7 +210,7 @@ func update(dt float64) {
 
 func doColoring() {
 	time.Sleep(time.Second * 5)
-	f, err := os.Open(os.Args[2])
+	f, err := os.Open(path)
 	if err != nil {
 		panic(err)
 	}
@@ -222,10 +219,10 @@ func doColoring() {
 	if err != nil {
 		panic(err)
 	}
-	of, _ := os.Create(os.Args[2] + ".txt")
+	of, _ := os.Create(path + ".txt")
 	defer of.Close()
 	for _, p := range ps {
-		p.color = img.At(int(p.pos.X/10), int(p.pos.Y/10))
+		p.color = img.At(int(p.pos.X), int(p.pos.Y))
 		r, g, b, a := p.color.RGBA()
 		fmt.Fprintf(of, "%v %v %v %v\n", uint8(r), uint8(g), uint8(b), uint8(a))
 	}
@@ -239,20 +236,44 @@ func nextColor() color.Color {
 }
 
 var colored = false
+var sprayV = r2.Vec{X: 10, Y: 0}
+
+func spray() {
+	fc := p5.FrameCount()
+	if fc%180 < 90 {
+		sprayV = r2.Rotate(sprayV, (math.Pi / 180), r2.Vec{0, 0})
+	} else {
+		sprayV = r2.Rotate(sprayV, -(math.Pi / 180), r2.Vec{0, 0})
+	}
+	ps = append(ps,
+		&Particle{
+			pos:   r2.Vec{X: R * 2, Y: R * 2},
+			v:     sprayV,
+			color: nextColor(),
+		},
+	)
+
+}
+
+var waterfallBias = []float64{-R * 6, -R * 3, 0, R * 3, R * 6}
+
+func waterfall() {
+	fc := p5.FrameCount()
+	ps = append(ps,
+		&Particle{
+			pos:   r2.Vec{X: WIDTH/2 + waterfallBias[fc%5], Y: R * 2},
+			v:     r2.Vec{X: 0, Y: 5},
+			color: nextColor(),
+		},
+	)
+}
 
 func draw() {
 	if len(ps) < MAX_N {
-		if p5.FrameCount()%2 == 0 {
-			ps = append(ps,
-				&Particle{
-					pos:   r2.Vec{X: INIT_POS_X + float64(20*(p5.FrameCount()%5)), Y: INIT_POS_Y},
-					v:     r2.Vec{X: 0, Y: INIT_V},
-					color: nextColor(),
-				},
-			)
-		}
+		// spray()
+		waterfall()
 	} else {
-		if !colored && os.Args[1] == "sim" {
+		if !colored && stage == "sim" {
 			colored = true
 			go doColoring()
 		}
@@ -269,8 +290,16 @@ func draw() {
 }
 
 func main() {
-	if len(os.Args) > 3 || (os.Args[1] != "sim" && os.Args[1] != "eval") {
-		panic("Usage: <BIN> [sim|eval] [<pic>|<scheme.txt>]")
+	if (len(os.Args) != 3 && len(os.Args) != 1) ||
+		(len(os.Args) == 3 && (os.Args[1] != "sim" && os.Args[1] != "eval")) {
+		panic("Usage: <BIN> [sim|Eval] [<pic>|<scheme.txt>]")
+	}
+	if len(os.Args) == 1 {
+		stage = "eval"
+		path = "demo.txt"
+	} else {
+		stage = os.Args[1]
+		path = os.Args[2]
 	}
 	p5.Run(setup, draw)
 }
