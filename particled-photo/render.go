@@ -2,11 +2,15 @@ package main
 
 import (
 	"cmp"
+	"flag"
 	"fmt"
 	"image"
 	"image/color"
+	"log"
 	"math"
 	"os"
+	"runtime/pprof"
+	"runtime/trace"
 	"sync"
 	"time"
 
@@ -44,14 +48,12 @@ func (p Particle) draw() {
 
 var colorList []color.Color
 
-var stage, path string
-
 func setup() {
 	p5.StrokeWidth(0)
 
 	p5.Canvas(WIDTH, HEIGHT)
-	if stage == "eval" {
-		f, err := os.Open(path)
+	if *cmd == "eval" {
+		f, err := os.Open(*path)
 		if err != nil {
 			panic("*** Color scheme invalid! ***")
 		}
@@ -94,19 +96,44 @@ func compose(v, xAxis r2.Vec) r2.Vec {
 	return r2.Add(r2.Scale(v.X, ux), r2.Scale(v.Y, uy))
 }
 
+func doTrace(path string) {
+	f, err := os.Create(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	trace.Start(f)
+	defer trace.Stop()
+	time.Sleep(time.Millisecond * 300)
+}
+
+func doCPUProfile(path string) {
+	f, err := os.Create(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+	pprof.StartCPUProfile(f)
+	defer pprof.StopCPUProfile()
+	time.Sleep(time.Millisecond * 1000)
+}
+
 func monitor() {
 	const INTERV = 500
 	for {
 		lastFrameCnt := p5.FrameCount()
-		time.Sleep(time.Millisecond * 500)
+		time.Sleep(time.Millisecond * INTERV)
 		fps := (p5.FrameCount() - lastFrameCnt) * 1000 / INTERV
-		fmt.Println("particles:", len(ps), "FPS:", fps)
-		/* if fps <= 30 {
-			trace.Start(os.Stderr)
-			time.Sleep(time.Millisecond * 100)
-			trace.Stop()
-			os.Exit(0)
-		} */
+		log.Println("particles:", len(ps), "FPS:", fps)
+		if fps <= 20 {
+			if *tracePath != "" {
+				doTrace(*tracePath)
+				os.Exit(0)
+			}
+			if *cpuProfile != "" {
+				doCPUProfile(*cpuProfile)
+				os.Exit(0)
+			}
+		}
 	}
 }
 
@@ -210,7 +237,7 @@ func update(dt float64) {
 
 func doColoring() {
 	time.Sleep(time.Second * 5)
-	f, err := os.Open(path)
+	f, err := os.Open(*path)
 	if err != nil {
 		panic(err)
 	}
@@ -219,7 +246,7 @@ func doColoring() {
 	if err != nil {
 		panic(err)
 	}
-	of, _ := os.Create(path + ".txt")
+	of, _ := os.Create(*path + ".txt")
 	defer of.Close()
 	for _, p := range ps {
 		p.color = img.At(int(p.pos.X), int(p.pos.Y))
@@ -273,7 +300,7 @@ func draw() {
 		// spray()
 		waterfall()
 	} else {
-		if !colored && stage == "sim" {
+		if !colored && *cmd == "sim" {
 			colored = true
 			go doColoring()
 		}
@@ -289,17 +316,12 @@ func draw() {
 	}
 }
 
+var cmd = flag.String("cmd", "eval", "sim/eval")
+var path = flag.String("path", "demo.txt", "image path/scheme path")
+var cpuProfile = flag.String("cpu-profile", "", "")
+var tracePath = flag.String("trace-path", "", "")
+
 func main() {
-	if (len(os.Args) != 3 && len(os.Args) != 1) ||
-		(len(os.Args) == 3 && (os.Args[1] != "sim" && os.Args[1] != "eval")) {
-		panic("Usage: <BIN> [sim|Eval] [<pic>|<scheme.txt>]")
-	}
-	if len(os.Args) == 1 {
-		stage = "eval"
-		path = "demo.txt"
-	} else {
-		stage = os.Args[1]
-		path = os.Args[2]
-	}
+	flag.Parse()
 	p5.Run(setup, draw)
 }
