@@ -92,7 +92,7 @@ func decompose(v, xAxis r2.Vec) r2.Vec {
 
 func compose(v, xAxis r2.Vec) r2.Vec {
 	ux := r2.Unit(xAxis)
-	uy := r2.Unit(r2.Rotate(xAxis, math.Pi/2, r2.Vec{X: 0, Y: 0}))
+	uy := r2.Unit(r2.Vec{X: -xAxis.Y, Y: xAxis.X})
 	return r2.Add(r2.Scale(v.X, ux), r2.Scale(v.Y, uy))
 }
 
