@@ -2,7 +2,10 @@ module github.com/Lander-Hatsune/toys/particled-photo
 
 go 1.21.1
 
-require github.com/go-p5/p5 v0.13.0
+require (
+	github.com/go-p5/p5 v0.13.0
+	gonum.org/v1/gonum v0.9.2
+)
 
 require (
 	gioui.org v0.0.0-20210729070555-8cec7e04eb71 // indirect
@@ -13,5 +16,4 @@ require (
 	golang.org/x/image v0.0.0-20220302094943-723b81ca9867 // indirect
 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654 // indirect
 	golang.org/x/text v0.3.7 // indirect
-	gonum.org/v1/gonum v0.9.2 // indirect
 )
