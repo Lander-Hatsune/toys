@@ -1,1 +1,1 @@
-![](wordcloud.org)
+![](wordcloud.png)
