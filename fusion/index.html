@@ -3,45 +3,57 @@
 
 <head>
     <script src="https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/Tezumie/Image-to-Pixel@main/image-to-pixel.js"></script>
+    <style>
+        body {
+            margin: 0;
+            background-color: black;
+            overflow: hidden;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+    </style>
 </head>
 
 <body>
     <script>
         let buffer;
         let spots = [];
-        const gridSize = 50;
-        const baseSpotSize = 10;
-        const mouseSpotSize = 80;
+        const gridSize = 40;
+        const baseSpotSize = 10.4;
         const scaleFactor = 0.5;
-        const reach = 100;
-        const enlargeRatio = 10;
+        const reach = 80;
+        const enlargeRatio = 7;
         const maxSpeed = 8;
         let cursor;
 
         function setup() {
-            createCanvas(600, 600, WEBGL);
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            createCanvas(w, h, WEBGL).parent(document.body);
 
-            buffer = createGraphics(width * scaleFactor, height * scaleFactor);
+            buffer = createGraphics(w * scaleFactor, h * scaleFactor);
             buffer.noStroke();
 
-            for (let x = gridSize / 2; x < width; x += gridSize) {
-                for (let y = gridSize / 2; y < height; y += gridSize) {
+            for (let x = gridSize / 2; x < w; x += gridSize) {
+                for (let y = gridSize / 2; y < h; y += gridSize) {
                     spots.push({ x, y });
                 }
             }
-            cursor = createVector(width / 2, height / 2);
+            cursor = createVector(0, 0);
         }
 
         function draw() {
             background(0);
-
             buffer.background(0);
             const toBuffer = (val) => val * scaleFactor;
-            buffer.fill(255);
 
             const distance = dist(cursor.x, cursor.y, mouseX, mouseY);
-            speed = map(Math.min(distance, 100), 0, 100, 0, maxSpeed);
+            let speed = map(Math.min(distance, 100), 0, 100, 0, maxSpeed);
             cursor.add(p5.Vector.sub(createVector(mouseX, mouseY), cursor).setMag(speed));
 
             const mx = toBuffer(cursor.x);
@@ -61,11 +73,26 @@
                 buffer.ellipse(bx, by, size, size);
             });
 
-            buffer.filter(BLUR, 3 * scaleFactor);
-            // buffer.filter(BLUR, 10 * scaleFactor);
+            buffer.filter(BLUR, 4 * scaleFactor);
             buffer.filter(THRESHOLD);
 
+            tint("#EFDBCB");
             image(buffer, -width / 2, -height / 2, width, height);
+            tint(255);
+        }
+
+        function windowResized() {
+            let w = window.innerWidth;
+            let h = window.innerHeight;
+            resizeCanvas(w, h);
+            buffer = createGraphics(w * scaleFactor, h * scaleFactor);
+            buffer.noStroke();
+            spots = [];
+            for (let x = gridSize / 2; x < w; x += gridSize) {
+                for (let y = gridSize / 2; y < h; y += gridSize) {
+                    spots.push({ x, y });
+                }
+            }
         }
     </script>
 </body>
