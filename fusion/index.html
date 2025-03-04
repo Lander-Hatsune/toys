@@ -16,6 +16,8 @@
         const scaleFactor = 0.5;
         const reach = 100;
         const enlargeRatio = 10;
+        const maxSpeed = 8;
+        let cursor;
 
         function setup() {
             createCanvas(600, 600, WEBGL);
@@ -28,6 +30,7 @@
                     spots.push({ x, y });
                 }
             }
+            cursor = createVector(width / 2, height / 2);
         }
 
         function draw() {
@@ -36,8 +39,13 @@
             buffer.background(0);
             const toBuffer = (val) => val * scaleFactor;
             buffer.fill(255);
-            const mx = toBuffer(mouseX);
-            const my = toBuffer(mouseY);
+
+            const distance = dist(cursor.x, cursor.y, mouseX, mouseY);
+            speed = map(Math.min(distance, 100), 0, 100, 0, maxSpeed);
+            cursor.add(p5.Vector.sub(createVector(mouseX, mouseY), cursor).setMag(speed));
+
+            const mx = toBuffer(cursor.x);
+            const my = toBuffer(cursor.y);
 
             spots.forEach(spot => {
                 const bx = toBuffer(spot.x);
